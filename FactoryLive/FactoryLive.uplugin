@@ -1,0 +1,20 @@
+{
+  "FileVersion": 3,
+  "Version": 25,
+  "VersionName": "0.9.0-chaos.5",
+  "SemVersion": "0.9.0-chaos.5",
+  "GameVersion": ">=517554 <517555",
+  "FriendlyName": "Factory Live Chaos",
+  "Description": "Satisfactory stream effects with a bundled local bridge that arms when the host save is ready.",
+  "CreatedBy": "LumiCon",
+  "DocsURL": "https://lumi-con.com/factory-live/chaos/",
+  "Category": "Modding",
+  "CanContainContent": false,
+  "IsBetaVersion": true,
+  "Modules": [
+    { "Name": "FactoryLive", "Type": "Runtime", "LoadingPhase": "PostDefault" }
+  ],
+  "Plugins": [
+    { "Name": "SML", "Enabled": true, "SemVersion": "^3.12.0" }
+  ]
+}

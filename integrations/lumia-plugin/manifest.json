@@ -1,0 +1,510 @@
+{
+  "id": "factory_live_chaos",
+  "name": "Factory Live Chaos",
+  "version": "1.4.1",
+  "icon": "icon.png",
+  "author": "LumiCon",
+  "website": "https://lumi-con.com/factory-live/lumia/",
+  "description": "Spawn creatures, drop Nobelisks, and run Satisfactory viewer effects through the local Factory Live bridge.",
+  "lumiaVersion": "^9.4.0",
+  "category": "apps",
+  "main": "main.js",
+  "config": {
+    "settings": [],
+    "settings_tutorial": "./tutorial.md",
+    "actions_tutorial": "./tutorial.md",
+    "alerts": [
+      {
+        "key": "pioneer_death",
+        "title": "Pioneer Death",
+        "defaultMessage": "The pioneer died in Satisfactory."
+      }
+    ],
+    "actions": [
+      {
+        "type": "arm_bridge",
+        "label": "Arm Bridge",
+        "description": "Enable viewer effects on the running bridge when the host game is ready. For broadcaster controls.",
+        "fields": [],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result"
+        ]
+      },
+      {
+        "type": "disarm_bridge",
+        "label": "Disarm Bridge",
+        "description": "Pause viewer effects and clear queued work. For broadcaster controls.",
+        "fields": [],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result"
+        ]
+      },
+      {
+        "type": "spawn_hog",
+        "label": "Spawn Hog",
+        "description": "Queue the selected creature variant around the pioneer.",
+        "fields": [
+          {
+            "key": "variant",
+            "label": "Tier",
+            "type": "select",
+            "required": true,
+            "defaultValue": 0,
+            "options": [
+              {
+                "label": "Standard",
+                "value": 0
+              },
+              {
+                "label": "Alpha",
+                "value": 1
+              },
+              {
+                "label": "Cliff",
+                "value": 2
+              },
+              {
+                "label": "Nuclear",
+                "value": 3
+              },
+              {
+                "label": "Jetpack",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "key": "quantity",
+            "label": "Quantity",
+            "type": "number",
+            "required": true,
+            "min": 1,
+            "max": 300,
+            "step": 1,
+            "defaultValue": 10,
+            "helperText": "Base quantity before the multiplier."
+          },
+          {
+            "key": "multiplier",
+            "label": "Multiplier",
+            "type": "text",
+            "defaultValue": "1",
+            "placeholder": "1",
+            "allowVariables": true,
+            "helperText": "Enter a number or use a Lumia variable. The total is rounded to the nearest whole item."
+          }
+        ],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset",
+          "factory_live_chaos_quantity"
+        ]
+      },
+      {
+        "type": "spawn_spitter",
+        "label": "Spawn Spitter",
+        "description": "Queue the selected creature variant around the pioneer.",
+        "fields": [
+          {
+            "key": "variant",
+            "label": "Variant",
+            "type": "select",
+            "required": true,
+            "defaultValue": 0,
+            "options": [
+              {
+                "label": "Forest",
+                "value": 0
+              },
+              {
+                "label": "Red Forest",
+                "value": 1
+              },
+              {
+                "label": "Desert",
+                "value": 2
+              },
+              {
+                "label": "Aquatic",
+                "value": 3
+              },
+              {
+                "label": "Alpha Forest",
+                "value": 4
+              },
+              {
+                "label": "Alpha Red Forest",
+                "value": 5
+              },
+              {
+                "label": "Alpha Desert",
+                "value": 6
+              },
+              {
+                "label": "Alpha Aquatic",
+                "value": 7
+              }
+            ]
+          },
+          {
+            "key": "quantity",
+            "label": "Quantity",
+            "type": "number",
+            "required": true,
+            "min": 1,
+            "max": 300,
+            "step": 1,
+            "defaultValue": 10,
+            "helperText": "Base quantity before the multiplier."
+          },
+          {
+            "key": "multiplier",
+            "label": "Multiplier",
+            "type": "text",
+            "defaultValue": "1",
+            "placeholder": "1",
+            "allowVariables": true,
+            "helperText": "Enter a number or use a Lumia variable. The total is rounded to the nearest whole item."
+          }
+        ],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset",
+          "factory_live_chaos_quantity"
+        ]
+      },
+      {
+        "type": "spawn_stinger",
+        "label": "Spawn Stinger",
+        "description": "Queue the selected creature variant around the pioneer.",
+        "fields": [
+          {
+            "key": "variant",
+            "label": "Tier",
+            "type": "select",
+            "required": true,
+            "defaultValue": 0,
+            "options": [
+              {
+                "label": "Small",
+                "value": 0
+              },
+              {
+                "label": "Big",
+                "value": 1
+              },
+              {
+                "label": "Elite",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "key": "quantity",
+            "label": "Quantity",
+            "type": "number",
+            "required": true,
+            "min": 1,
+            "max": 300,
+            "step": 1,
+            "defaultValue": 3,
+            "helperText": "Base quantity before the multiplier."
+          },
+          {
+            "key": "multiplier",
+            "label": "Multiplier",
+            "type": "text",
+            "defaultValue": "1",
+            "placeholder": "1",
+            "allowVariables": true,
+            "helperText": "Enter a number or use a Lumia variable. The total is rounded to the nearest whole item."
+          }
+        ],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset",
+          "factory_live_chaos_quantity"
+        ]
+      },
+      {
+        "type": "spawn_crab_hatcher",
+        "label": "Spawn Crab Hatcher",
+        "description": "Queue the selected creature variant around the pioneer.",
+        "fields": [
+          {
+            "key": "quantity",
+            "label": "Quantity",
+            "type": "number",
+            "required": true,
+            "min": 1,
+            "max": 300,
+            "step": 1,
+            "defaultValue": 3,
+            "helperText": "Base quantity before the multiplier."
+          },
+          {
+            "key": "multiplier",
+            "label": "Multiplier",
+            "type": "text",
+            "defaultValue": "1",
+            "placeholder": "1",
+            "allowVariables": true,
+            "helperText": "Enter a number or use a Lumia variable. The total is rounded to the nearest whole item."
+          }
+        ],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset",
+          "factory_live_chaos_quantity"
+        ]
+      },
+      {
+        "type": "drop_nobelisk",
+        "label": "Drop Nobelisk",
+        "description": "Drop Nobelisks that detonate on impact. A single request can include one Nuke.",
+        "fields": [
+          {
+            "key": "variant",
+            "label": "Type",
+            "type": "select",
+            "required": true,
+            "defaultValue": 0,
+            "options": [
+              {
+                "label": "Standard",
+                "value": 0
+              },
+              {
+                "label": "Pulse",
+                "value": 1
+              },
+              {
+                "label": "Gas",
+                "value": 2
+              },
+              {
+                "label": "Cluster",
+                "value": 3
+              },
+              {
+                "label": "Nuke",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "key": "quantity",
+            "label": "Quantity",
+            "type": "number",
+            "required": true,
+            "min": 1,
+            "max": 32,
+            "step": 1,
+            "defaultValue": 1,
+            "helperText": "Base quantity before the multiplier."
+          },
+          {
+            "key": "multiplier",
+            "label": "Multiplier",
+            "type": "text",
+            "defaultValue": "1",
+            "placeholder": "1",
+            "allowVariables": true,
+            "helperText": "Enter a number or use a Lumia variable. The total is rounded to the nearest whole item."
+          }
+        ],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset",
+          "factory_live_chaos_quantity"
+        ]
+      },
+      {
+        "type": "mob_chaos",
+        "label": "Mob Chaos",
+        "description": "Queue the configured Chaos Mode creature waves.",
+        "fields": [],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset"
+        ]
+      },
+      {
+        "type": "nobelisk_chaos",
+        "label": "Nobelisk Chaos",
+        "description": "Queue the choreographed 250-drop show.",
+        "fields": [],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset"
+        ]
+      },
+      {
+        "type": "drop_random_equipment",
+        "label": "Drop Random Equipment",
+        "description": "Drop one eligible equipped item as a pickup.",
+        "fields": [],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset"
+        ]
+      },
+      {
+        "type": "turn_pioneer_around",
+        "label": "Turn Pioneer Around",
+        "description": "Turn the pioneer 180 degrees.",
+        "fields": [],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset"
+        ]
+      },
+      {
+        "type": "trigger_preset",
+        "label": "Trigger Preset",
+        "description": "Queue a creature wave, Nobelisk drop, or viewer prank.",
+        "fields": [
+          {
+            "key": "preset",
+            "type": "select",
+            "label": "Preset",
+            "required": true,
+            "defaultValue": "chaos-mode",
+            "options": [
+              {
+                "label": "Chaos Mode (1,200 creatures)",
+                "value": "chaos-mode"
+              },
+              {
+                "label": "Nobelisk Chaos (250-drop firework show)",
+                "value": "nobelisk-chaos"
+              },
+              {
+                "label": "Drop Random Equipment",
+                "value": "equipment-drop"
+              },
+              {
+                "label": "Hatcher Surge (300)",
+                "value": "hatcher-surge"
+              },
+              {
+                "label": "Spitter Surge (300)",
+                "value": "spitter-surge"
+              },
+              {
+                "label": "Alpha Spitter Surge (300)",
+                "value": "alpha-spitter-surge"
+              },
+              {
+                "label": "Jetpack Hog Surge (300)",
+                "value": "jetpack-hog-surge"
+              },
+              {
+                "label": "Hog Swarm",
+                "value": "hog-swarm"
+              },
+              {
+                "label": "Alpha Hogs",
+                "value": "alpha-hogs"
+              },
+              {
+                "label": "Forest Spitters",
+                "value": "spitter-pack"
+              },
+              {
+                "label": "Stinger Pack",
+                "value": "stinger-pack"
+              },
+              {
+                "label": "Elite Stinger",
+                "value": "elite-stinger"
+              },
+              {
+                "label": "Standard Nobelisks",
+                "value": "nobelisk-rain"
+              },
+              {
+                "label": "Pulse Nobelisks",
+                "value": "pulse-rain"
+              },
+              {
+                "label": "Gas Nobelisks",
+                "value": "gas-rain"
+              },
+              {
+                "label": "Carpet Bomb (Cluster)",
+                "value": "cluster-rain"
+              },
+              {
+                "label": "Nuke Drop",
+                "value": "nuke-drop"
+              },
+              {
+                "label": "Nuclear Carpet Bomb",
+                "value": "nuke-carpet"
+              },
+              {
+                "label": "Turn Around",
+                "value": "turn-around"
+              },
+              {
+                "label": "Creature Roulette",
+                "value": "creature-roulette"
+              },
+              {
+                "label": "Surprise Me",
+                "value": "surprise-me"
+              }
+            ]
+          }
+        ],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset"
+        ]
+      },
+      {
+        "type": "trigger_custom_preset",
+        "label": "Trigger Custom Preset",
+        "description": "Queue a named preset from your own bridge configuration.",
+        "fields": [
+          {
+            "key": "preset",
+            "type": "text",
+            "label": "Preset name",
+            "required": true
+          }
+        ],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset"
+        ]
+      },
+      {
+        "type": "check_bridge",
+        "label": "Check Bridge",
+        "description": "Show whether the bridge is running and the host is ready to receive effects.",
+        "fields": [],
+        "acceptedVariables": [
+          "factory_live_chaos_status",
+          "factory_live_chaos_result",
+          "factory_live_chaos_selected_preset"
+        ]
+      }
+    ]
+  },
+  "license": "UNLICENSED"
+}
