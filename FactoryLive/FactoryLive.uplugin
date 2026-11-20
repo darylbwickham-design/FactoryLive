@@ -1,6 +1,6 @@
 {
   "FileVersion": 3,
-  "Version": 25,
+  "Version": 0,
   "VersionName": "0.9.0-chaos.5",
   "SemVersion": "0.9.0-chaos.5",
   "GameVersion": ">=517554 <517555",
