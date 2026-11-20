@@ -1,41 +1,20 @@
 # Factory Live
 
-Factory Live connects Satisfactory to Lumia Stream and Streamer.bot. This repository contains the Chaos mod, local bridge, and integrations.
+Run Twitch chat commands, channel-point rewards, and alerts in Satisfactory through Lumia Stream or Streamer.bot.
 
-[Setup guide and downloads](https://lumi-con.com/factory-live/chaos/)
+- [Install Factory Live through Satisfactory Mod Manager](https://ficsit.app/mod/FactoryLive). Choose **0.9.0-chaos.6** for Windows Steam build **517554** or **520140**.
+- [Set up Lumia Stream and the bundled commands](https://lumi-con.com/factory-live/lumia/).
+- [Set up Streamer.bot](https://lumi-con.com/factory-live/streamerbot/).
 
-The standalone Chaos Lumia plugin is in `integrations/lumia-plugin`. The plugin upgrade for regular Factory Live users is in `integrations/lumia-plugin-regular`.
+Load a save as host. The mod starts and arms the bundled bridge when the world is ready. **Disarm Bridge** clears pending effects. Close any older standalone bridge before starting Satisfactory.
 
-Chaos Mode queues **1,200 creatures** from one viewer event. It sends 300 Crab Hatchers, 300 mixed small Spitters, 300 mixed alpha Spitters, and 300 mixed Hogs and Stingers. Nobelisk Chaos adds a separate **250-drop firework show**. The Windows build targets Satisfactory Steam build 517554 with SML 3.12.
+**Satisfactory Stream Integration 1.5.0** is in `integrations/lumia-plugin-regular`. It keeps the `factory_live` plugin ID and bundles `!chaos`, `!nukem`, and 16 Twitch reward templates.
 
-## Bundled bridge preview (0.9.0-chaos.5)
+## Build the bundled mod
 
-The Steam Windows preview includes the bridge and a portable Node.js runtime. Load a save as host and the mod starts the bridge once it can accept effects. The bridge arms once per loaded world. **Disarm Bridge** still clears the queue and stays in effect until you arm again or load another world. Leaving the world stops the managed bridge.
+Copy `bridge.mjs`, `bridge.config.json`, `streamerbot.mjs`, the official Windows x64 Node.js `node.exe`, and its license into `Mods/FactoryLive/Bridge` in the starter project. Alpakit stages this folder via `Config/PluginSettings.ini`. Use Alpakit Release for the SMM upload.
 
-For an existing setup, close the separately launched bridge before loading the save. Use the same Lumia plugin and local link file as before. Custom bridge settings go in `%LOCALAPPDATA%\FactoryLiveChaos\bridge.local.json` or the folder specified by `FACTORYLIVE_CHAOS_HOME`.
-
-To rebuild the bundled edition, copy `bridge.mjs`, `bridge.config.json`, `streamerbot.mjs`, the official Windows x64 Node.js `node.exe`, and its license into `Mods/FactoryLive/Bridge` in the starter project. Alpakit stages this folder via `Config/PluginSettings.ini`. Use an Alpakit Release package for submission.
-
-## Install on a test profile
-
-1. Use a separate Satisfactory install and a copy of the save you want to stress-test. Enable SML 3.12 in that profile.
-2. Extract `FactoryLive_Chaos_0.9.0-chaos.4_Windows.zip` into `FactoryGame/Mods/FactoryLive` in the test install. The descriptor should be at `FactoryGame/Mods/FactoryLive/FactoryLive.uplugin`. The test build uses the Factory Live mod identity so it can read the save's existing mob ledger.
-3. Open **Bridge** in the share kit, or extract `FactoryLive_Chaos_0.9.0-chaos.4_Bridge.zip`. Install Node.js 22 or later and double-click **Start Factory Live Bridge.cmd**. The bridge starts disarmed on loopback port **37129** and creates its own link in `%LOCALAPPDATA%\FactoryLiveChaos\link.json`. The launcher reads `bridge.local.json` when present. Keep your current port and link when upgrading a custom setup.
-4. Load the test world as host. Once you can control the pioneer, use **Factory Live Chaos → Arm Bridge** from a private Lumia control. From a terminal in the bridge folder, you can also run the following commands.
-
-```powershell
-node bridge.mjs status
-node bridge.mjs arm
-node bridge.mjs trigger chaos-mode
-```
-
-## Set up a $10 alert in Lumia Stream
-
-1. In Lumia 9.4, open **Settings → Plugins → Installed → Install Manually** and install `FactoryLive_Chaos_Lumia_1.4.1.lumiaplugin`. Upgrade the same plugin edition to keep existing bindings.
-2. Add **Arm Bridge** and **Disarm Bridge** to a private Stream Deck control or broadcaster-only commands. Disarming clears pending viewer effects.
-3. On the successful tip or payment alert, add **Factory Live Chaos → Mob Chaos**. Set the amount and currency filter in the alert or payment integration. For example, trigger on USD 10 or more. For a channel-points reward, set the price in Twitch and attach the same action.
-
-Under **Alerts → Factory Live Chaos**, configure **Pioneer Death** with a sound, overlay, or other action. Chaos Bridge 0.9.0-chaos.4 reports the host’s respawn transition once per death after the save is ready. The alert works with viewer effects disarmed.
+Overrides go in `%LOCALAPPDATA%\FactoryLiveChaos\bridge.local.json` or the folder specified by `FACTORYLIVE_CHAOS_HOME`.
 
 ## Set up a $10 alert in Streamer.bot
 

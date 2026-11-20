@@ -1,11 +1,11 @@
 {
   "id": "factory_live",
-  "name": "Factory Live",
-  "version": "1.3.1",
+  "name": "Satisfactory Stream Integration",
+  "version": "1.5.0",
   "icon": "icon.png",
   "author": "LumiCon",
   "website": "https://lumi-con.com/factory-live/lumia/",
-  "description": "Spawn creatures, drop Nobelisks, and run Satisfactory viewer effects through the local Factory Live bridge.",
+  "description": "Factory Live connects Lumia Stream to Satisfactory. Includes !chaos, !nukem and 16 Twitch reward templates. Install the game mod through Satisfactory Mod Manager. Setup at https://lumi-con.com/factory-live/lumia/.",
   "lumiaVersion": "^9.4.0",
   "category": "apps",
   "main": "main.js",
@@ -478,5 +478,29 @@
       }
     ]
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "repository": "https://github.com/darylbwickham-design/FactoryLive",
+  "changelog": "changelog.md",
+  "bundle": {
+    "commands": [
+      "bundle/commands/chaos.lumia",
+      "bundle/commands/nukem.lumia",
+      "bundle/commands/hog-wave.lumia",
+      "bundle/commands/alpha-hog-wave.lumia",
+      "bundle/commands/forest-spitter-wave.lumia",
+      "bundle/commands/stinger-pack.lumia",
+      "bundle/commands/elite-stinger.lumia",
+      "bundle/commands/hatcher-trial.lumia",
+      "bundle/commands/standard-nobelisks.lumia",
+      "bundle/commands/pulse-nobelisks.lumia",
+      "bundle/commands/gas-nobelisks.lumia",
+      "bundle/commands/carpet-bomb.lumia",
+      "bundle/commands/nuke-drop.lumia",
+      "bundle/commands/nuclear-carpet-bomb.lumia",
+      "bundle/commands/turn-around.lumia",
+      "bundle/commands/creature-roulette.lumia",
+      "bundle/commands/surprise-me.lumia",
+      "bundle/commands/drop-equipment.lumia"
+    ]
+  }
 }

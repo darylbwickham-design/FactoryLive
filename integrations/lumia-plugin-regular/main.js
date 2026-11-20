@@ -8,7 +8,6 @@ const tokenPattern = /^[a-f0-9]{64}$/;
 const eventIdPattern = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 const actionDefinitions = new Map(manifest.config.actions.map(action => [action.type, action]));
 const builtInPresets = new Set(actionDefinitions.get('trigger_preset').fields[0].options.map(option => option.value));
-const chaosPlugin = manifest.id === 'factory_live_chaos';
 const spawnActions = new Map([
   ['spawn_hog', 'hog'], ['spawn_spitter', 'spitter'], ['spawn_stinger', 'stinger'],
   ['spawn_crab_hatcher', 'hatcher'], ['drop_nobelisk', 'nobelisk']
@@ -48,11 +47,11 @@ function spawnRequest(type, value) {
 }
 
 const connectionMessages = {
-  link_missing: 'Start the Factory Live bridge on this PC.',
+  link_missing: 'Install Factory Live in Satisfactory Mod Manager, then load a save as host on this PC.',
   invalid_link: 'Restart the Factory Live bridge to check its local link file.',
-  bridge_offline: 'Factory Live bridge is unreachable. Check that its PowerShell window is open.',
+  bridge_offline: 'Factory Live is offline. Load a save as host in Satisfactory with the mod enabled.',
   bridge_busy: 'Factory Live bridge is busy. Try again shortly.',
-  bridge_upgrade_needed: 'Use Bridge 0.8.0 or newer. If already updated, restart the bridge to refresh its local link.',
+  bridge_upgrade_needed: 'Update Factory Live in Satisfactory Mod Manager, then restart Satisfactory.',
   game_disconnected: 'Bridge connected. Load a Satisfactory save as host.',
   game_not_ready: 'Load a Satisfactory save as host and regain control of your pioneer.',
   disarmed: 'Bridge connected and game ready. Arm Factory Live when you want viewer effects.',
@@ -141,11 +140,6 @@ class FactoryLivePlugin extends Plugin {
         factory_live_selected_preset: result.selectedPreset ?? '',
         ...(isSpawn && { factory_live_quantity: result.quantity ?? 0 })
       };
-      if (chaosPlugin) {
-        for (const [key, value] of Object.entries(newlyPassedVariables)) {
-          newlyPassedVariables[key.replace(/^factory_live_/, 'factory_live_chaos_')] = value;
-        }
-      }
     }
     return { newlyPassedVariables };
   }
@@ -155,17 +149,22 @@ class FactoryLivePlugin extends Plugin {
     this.inFlight++;
     try {
       const signal = AbortSignal.any([this.unload.signal, AbortSignal.timeout(2500)]);
-      const directory = process.env[chaosPlugin ? 'FACTORYLIVE_CHAOS_HOME' : 'FACTORYLIVE_HOME'] ||
-        (process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, chaosPlugin ? 'FactoryLiveChaos' : 'FactoryLive'));
-      if (!directory) return { status: 0, code: 'link_missing' };
+      const override = process.env.FACTORYLIVE_CHAOS_HOME || process.env.FACTORYLIVE_HOME;
+      const localAppData = process.env.LOCALAPPDATA;
+      const directories = override ? [override] : localAppData
+        ? [join(localAppData, 'FactoryLiveChaos'), join(localAppData, 'FactoryLive')]
+        : [];
       let link;
-      try {
-        link = JSON.parse(await readFile(join(directory, 'link.json'), { encoding: 'utf8', signal }));
-      } catch (error) {
-        const code = error.code === 'ENOENT' ? 'link_missing'
-          : error.name === 'AbortError' ? 'bridge_offline' : 'invalid_link';
-        return { status: 0, code };
+      for (const directory of directories) {
+        try {
+          link = JSON.parse(await readFile(join(directory, 'link.json'), { encoding: 'utf8', signal }));
+          break;
+        } catch (error) {
+          if (error.code === 'ENOENT') continue;
+          return { status: 0, code: error.name === 'AbortError' ? 'bridge_offline' : 'invalid_link' };
+        }
       }
+      if (link === undefined) return { status: 0, code: 'link_missing' };
       const token = control ? link?.gameToken : link?.webhookToken;
       if (!Number.isInteger(link?.port) || link.port < 1024 || link.port > 65535 ||
           typeof token !== 'string' || !tokenPattern.test(token)) {
