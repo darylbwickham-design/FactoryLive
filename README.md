@@ -2,9 +2,10 @@
 
 Run Twitch chat commands, channel-point rewards, and alerts in Satisfactory through Lumia Stream or Streamer.bot.
 
-- [Install Factory Live through Satisfactory Mod Manager](https://ficsit.app/mod/FactoryLive). Choose **0.9.0-chaos.6** for Windows Steam build **517554** or **520140**.
+- [Install Factory Live through Satisfactory Mod Manager](https://ficsit.app/mod/FactoryLive). Choose **0.9.0-chaos.8** for Windows Steam build **517554** or **520140**.
 - [Set up Lumia Stream and the bundled commands](https://lumi-con.com/factory-live/lumia/).
 - [Set up Streamer.bot](https://lumi-con.com/factory-live/streamerbot/).
+- [List all 24 mob endpoints and copy an example](MOB-ENDPOINTS.md). Spawn hostile creatures or wildlife by name. Mob Chaos draws exclusively from hostile creatures.
 
 Load a save as host. The mod starts and arms the bundled bridge when the world is ready. **Disarm Bridge** clears pending effects. Close any older standalone bridge before starting Satisfactory.
 

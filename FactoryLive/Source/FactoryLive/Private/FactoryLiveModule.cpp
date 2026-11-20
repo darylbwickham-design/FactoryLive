@@ -15,11 +15,14 @@
 #include "Equipment/FGAmmoTypeProjectile.h"
 #include "Equipment/FGStickyExplosive.h"
 #include "FGInventoryComponentEquipment.h"
+#include "Creature/Enemy/FGFlyingBabyCrab.h"
+#include "FGManta.h"
 #include "FGItemPickup_Spawnable.h"
 #include "FGPlayerController.h"
 #include "Resources/FGEquipmentDescriptor.h"
 #include "FactoryLiveBackpack.h"
 #include "FactoryLiveBudget.h"
+#include "FactoryLiveFliers.h"
 #include "FactoryLiveMobLedger.h"
 #include "FactoryLiveFireworks.h"
 #include "FactoryLiveNobeliskImpact.h"
@@ -69,38 +72,44 @@ namespace
     constexpr int32 MaxPlacementFailures = 32;
     constexpr int32 HatcherCapacity = 600;
 
-    const TCHAR* CreatureNames[] = {
-        TEXT("hog"), TEXT("alpha-hog"), TEXT("spitter"), TEXT("alpha-spitter"), TEXT("jetpack-hog"),
-        TEXT("stinger"), TEXT("elite-stinger"), TEXT("cliff-hog"), TEXT("nuclear-hog"), TEXT("big-stinger"),
-        TEXT("spitter-red"), TEXT("spitter-desert"), TEXT("spitter-aquatic"),
-        TEXT("alpha-spitter-red"), TEXT("alpha-spitter-desert"), TEXT("alpha-spitter-aquatic"), TEXT("crab-hatcher")
+    enum class ECreatureKind : uint8 { Hostile, Wildlife, Hatcher, FlyingCrab, Manta };
+    struct FCreatureType
+    {
+        const TCHAR* Name;
+        const TCHAR* ClassPath;
+        ECreatureKind Kind;
     };
-    const TCHAR* CreatureClassPaths[] = {
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/Char_Hog.Char_Hog_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/AlphaHog/Char_AlphaHog.Char_AlphaHog_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterForest/Char_SpitterForestSmall.Char_SpitterForestSmall_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterForest/Char_SpitterForestAlpha.Char_SpitterForestAlpha_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/Johnny/Char_Johnny.Char_Johnny_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Stinger/SmallStinger/Char_Stinger_Child.Char_Stinger_Child_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Stinger/BigStinger/Char_EliteStinger.Char_EliteStinger_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/CliffHog/Char_CliffHog.Char_CliffHog_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/NuclearHog/Char_NuclearHog.Char_NuclearHog_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Stinger/Char_Stinger.Char_Stinger_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterForestRed/Char_SpitterForestRedSmall.Char_SpitterForestRedSmall_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterDesert/Char_SpitterDesertSmall.Char_SpitterDesertSmall_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterAquatic/Char_SpitterAquaticSmall.Char_SpitterAquaticSmall_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterForestRed/Char_SpitterForestRedAlpha.Char_SpitterForestRedAlpha_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterDesert/Char_SpitterDesertAlpha.Char_SpitterDesertAlpha_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterAquatic/Char_SpitterAquaticAlpha.Char_SpitterAquaticAlpha_C"),
-        TEXT("/Game/FactoryGame/Character/Creature/Enemy/CrabHatcher/Char_CrabHatcher.Char_CrabHatcher_C")
+    constexpr FCreatureType CreatureTypes[] = {
+        { TEXT("hog"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/Char_Hog.Char_Hog_C"), ECreatureKind::Hostile },
+        { TEXT("alpha-hog"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/AlphaHog/Char_AlphaHog.Char_AlphaHog_C"), ECreatureKind::Hostile },
+        { TEXT("spitter"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterForest/Char_SpitterForestSmall.Char_SpitterForestSmall_C"), ECreatureKind::Hostile },
+        { TEXT("alpha-spitter"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterForest/Char_SpitterForestAlpha.Char_SpitterForestAlpha_C"), ECreatureKind::Hostile },
+        { TEXT("jetpack-hog"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/Johnny/Char_Johnny.Char_Johnny_C"), ECreatureKind::Hostile },
+        { TEXT("stinger"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Stinger/SmallStinger/Char_Stinger_Child.Char_Stinger_Child_C"), ECreatureKind::Hostile },
+        { TEXT("elite-stinger"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Stinger/BigStinger/Char_EliteStinger.Char_EliteStinger_C"), ECreatureKind::Hostile },
+        { TEXT("cliff-hog"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/CliffHog/Char_CliffHog.Char_CliffHog_C"), ECreatureKind::Hostile },
+        { TEXT("nuclear-hog"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Hog/NuclearHog/Char_NuclearHog.Char_NuclearHog_C"), ECreatureKind::Hostile },
+        { TEXT("big-stinger"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Stinger/Char_Stinger.Char_Stinger_C"), ECreatureKind::Hostile },
+        { TEXT("spitter-red"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterForestRed/Char_SpitterForestRedSmall.Char_SpitterForestRedSmall_C"), ECreatureKind::Hostile },
+        { TEXT("spitter-desert"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterDesert/Char_SpitterDesertSmall.Char_SpitterDesertSmall_C"), ECreatureKind::Hostile },
+        { TEXT("spitter-aquatic"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterAquatic/Char_SpitterAquaticSmall.Char_SpitterAquaticSmall_C"), ECreatureKind::Hostile },
+        { TEXT("alpha-spitter-red"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterForestRed/Char_SpitterForestRedAlpha.Char_SpitterForestRedAlpha_C"), ECreatureKind::Hostile },
+        { TEXT("alpha-spitter-desert"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterDesert/Char_SpitterDesertAlpha.Char_SpitterDesertAlpha_C"), ECreatureKind::Hostile },
+        { TEXT("alpha-spitter-aquatic"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Spitter/SpitterAquatic/Char_SpitterAquaticAlpha.Char_SpitterAquaticAlpha_C"), ECreatureKind::Hostile },
+        { TEXT("crab-hatcher"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/CrabHatcher/Char_CrabHatcher.Char_CrabHatcher_C"), ECreatureKind::Hatcher },
+        { TEXT("elite-hatcher"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/CrabHatcher/Char_BigCrabHatcher.Char_BigCrabHatcher_C"), ECreatureKind::Hatcher },
+        { TEXT("flying-crab"), TEXT("/Game/FactoryGame/Character/Creature/Enemy/Crab/BabyCrab/BP_FlyingBabyCrab.BP_FlyingBabyCrab_C"), ECreatureKind::FlyingCrab },
+        { TEXT("lizard-doggo"), TEXT("/Game/FactoryGame/Character/Creature/Wildlife/SpaceRabbit/Char_SpaceRabbit.Char_SpaceRabbit_C"), ECreatureKind::Wildlife },
+        { TEXT("bean"), TEXT("/Game/FactoryGame/Character/Creature/Wildlife/SpaceGiraffe/Char_SpaceGiraffe.Char_SpaceGiraffe_C"), ECreatureKind::Wildlife },
+        { TEXT("flightless-bird"), TEXT("/Game/FactoryGame/Character/Creature/Wildlife/NonFlyingBird/Char_NonFlyingBird.Char_NonFlyingBird_C"), ECreatureKind::Wildlife },
+        { TEXT("beetle"), TEXT("/Game/FactoryGame/Character/Creature/Wildlife/Beetle/Char_Beetle.Char_Beetle_C"), ECreatureKind::Wildlife },
+        { TEXT("manta"), TEXT("/Game/FactoryGame/Character/Creature/Wildlife/Manta/BP_Manta.BP_Manta_C"), ECreatureKind::Manta }
     };
-    static_assert(UE_ARRAY_COUNT(CreatureNames) == UE_ARRAY_COUNT(CreatureClassPaths));
-    constexpr int32 HatcherIndex = UE_ARRAY_COUNT(CreatureNames) - 1;
     static int32 FindCreatureIndex(const FString& Creature)
     {
-        for (int32 Index = 0; Index < UE_ARRAY_COUNT(CreatureNames); ++Index)
+        for (int32 Index = 0; Index < UE_ARRAY_COUNT(CreatureTypes); ++Index)
         {
-            if (Creature == CreatureNames[Index]) return Index;
+            if (Creature == CreatureTypes[Index].Name) return Index;
         }
         return INDEX_NONE;
     }
@@ -157,7 +166,7 @@ namespace
         bool bFireworks = false;
         bool IsNobelisk() const { return bFireworks || NobeliskIndex != INDEX_NONE; }
         bool IsNuke() const { return NobeliskIndex == NukeTypeIndex; }
-        bool IsHatcher() const { return CreatureIndex == HatcherIndex; }
+        bool IsHatcher() const { return CreatureIndex != INDEX_NONE && CreatureTypes[CreatureIndex].Kind == ECreatureKind::Hatcher; }
         int32 CurrentCreatureIndex() const
         {
             return CreatureVariants.IsEmpty() ? CreatureIndex : CreatureVariants[(Requested - Remaining) % CreatureVariants.Num()];
@@ -316,7 +325,7 @@ private:
     {
         if (AssetLoad) return;
         TArray<FSoftObjectPath> Paths;
-        for (const TCHAR* Path : CreatureClassPaths) Paths.Emplace(Path);
+        for (const FCreatureType& Creature : CreatureTypes) Paths.Emplace(Creature.ClassPath);
         for (const FNobeliskType& Type : NobeliskTypes) Paths.Emplace(Type.AmmoPath);
         AssetLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(Paths);
     }
@@ -327,15 +336,19 @@ private:
         if (!bCheckedAssets)
         {
             bCheckedAssets = true;
-            for (int32 Index = 0; Index < UE_ARRAY_COUNT(CreatureClassPaths); ++Index)
+            for (int32 Index = 0; Index < UE_ARRAY_COUNT(CreatureTypes); ++Index)
             {
-                UClass* Type = Cast<UClass>(FSoftObjectPath(CreatureClassPaths[Index]).ResolveObject());
-                const UClass* BaseClass = Index == HatcherIndex ? AFGCrabHatcher::StaticClass() : AFGCreature::StaticClass();
+                UClass* Type = Cast<UClass>(FSoftObjectPath(CreatureTypes[Index].ClassPath).ResolveObject());
+                const ECreatureKind Kind = CreatureTypes[Index].Kind;
+                const UClass* BaseClass = AFGCreature::StaticClass();
+                if (Kind == ECreatureKind::Hatcher) BaseClass = AFGCrabHatcher::StaticClass();
+                if (Kind == ECreatureKind::FlyingCrab) BaseClass = AFGFlyingBabyCrab::StaticClass();
+                if (Kind == ECreatureKind::Manta) BaseClass = AFGManta::StaticClass();
                 const bool bValid = Type && Type->IsChildOf(BaseClass) &&
                     !Type->HasAnyClassFlags(CLASS_Abstract);
                 if (!bValid)
                 {
-                    UE_LOG(LogFactoryLive, Error, TEXT("Creature class unavailable: %s"), CreatureClassPaths[Index]);
+                    UE_LOG(LogFactoryLive, Error, TEXT("Creature class unavailable: %s"), CreatureTypes[Index].ClassPath);
                     continue;
                 }
                 CreatureClasses[Index] = Type;
@@ -421,6 +434,19 @@ private:
         bCancelFallingDrops = false;
         if (bReady && bArmed && ProcessNobeliskImpact(Now, bSlow)) return;
         if (ProcessPlayerAction(Now, bSlow, bBackpackReady, bTurnReady, bEquipmentDropReady, Backpack, Player, *Controller)) return;
+        if (bReady && Now >= NextCreature && FrameBudget.CanSpawn(Now))
+        {
+            const FName Pending = Ledger->NextFlierToRestore();
+            if (!Pending.IsNone())
+            {
+                const int32 Index = FindCreatureIndex(Pending.ToString());
+                Ledger->RestoreNextFlier(Index == INDEX_NONE ? nullptr : CreatureClasses[Index].Get(), *Player);
+                const double Finished = FPlatformTime::Seconds();
+                FrameBudget.ReportWork(Finished, Finished - Now);
+                NextCreature = Finished + CreatureCapacityRecheck;
+                return;
+            }
+        }
         if (!bReady || !bArmed || !FrameBudget.CanSpawn(Now)) return;
         ProcessJobs(*World, *Player, *Ledger, Now, bSlow);
     }
@@ -655,13 +681,14 @@ private:
         Body->SetBoolField(TEXT("turnReady"), bTurnReady);
         Body->SetBoolField(TEXT("equipmentDropReady"), bEquipmentDropReady);
         Body->SetBoolField(TEXT("mixedCreatures"), true);
-        TArray<TSharedPtr<FJsonValue>> CreatureTypes;
-        for (int32 Index = 0; Index < UE_ARRAY_COUNT(CreatureNames); ++Index)
+        TArray<TSharedPtr<FJsonValue>> AvailableCreatures;
+        for (int32 Index = 0; Index < UE_ARRAY_COUNT(CreatureTypes); ++Index)
         {
-            if (CreatureClasses[Index].IsValid()) CreatureTypes.Add(MakeShared<FJsonValueString>(CreatureNames[Index]));
+            if (CreatureClasses[Index].IsValid()) AvailableCreatures.Add(MakeShared<FJsonValueString>(CreatureTypes[Index].Name));
         }
-        Body->SetArrayField(TEXT("creatureTypes"), MoveTemp(CreatureTypes));
-        if (CreatureClasses[HatcherIndex].IsValid())
+        Body->SetArrayField(TEXT("creatureTypes"), MoveTemp(AvailableCreatures));
+        if (CreatureClasses[FindCreatureIndex(TEXT("crab-hatcher"))].IsValid() ||
+            CreatureClasses[FindCreatureIndex(TEXT("elite-hatcher"))].IsValid())
         {
             const TSharedRef<FJsonObject> Hatchers = MakeShared<FJsonObject>();
             Hatchers->SetNumberField(TEXT("alive"), Ledger.GetLivingHatchers());
@@ -801,19 +828,19 @@ private:
             const TArray<TSharedPtr<FJsonValue>>* Variants = nullptr;
             if (Json.TryGetArrayField(TEXT("variants"), Variants))
             {
-                if (Job.IsHatcher() || !Variants || Variants->IsEmpty() || Variants->Num() > 8) return;
+                if (CreatureTypes[Job.CreatureIndex].Kind != ECreatureKind::Hostile || !Variants || Variants->IsEmpty() || Variants->Num() > 8) return;
                 for (const TSharedPtr<FJsonValue>& Variant : *Variants)
                 {
                     FString Name;
                     if (!Variant.IsValid() || !Variant->TryGetString(Name)) return;
                     const int32 Index = FindCreatureIndex(Name);
-                    if (Index == INDEX_NONE || Index == HatcherIndex || !CreatureClasses[Index].IsValid()) return;
+                    if (Index == INDEX_NONE || CreatureTypes[Index].Kind != ECreatureKind::Hostile || !CreatureClasses[Index].IsValid()) return;
                     Job.CreatureVariants.AddUnique(Index);
                 }
                 for (int32 Index = Job.CreatureVariants.Num() - 1; Index > 0; --Index)
                     Job.CreatureVariants.Swap(Index, FMath::RandRange(0, Index));
             }
-            Job.CreatureCost = AFactoryLiveMobLedger::GetCreatureCost(FName(CreatureNames[Job.CurrentCreatureIndex()]));
+            Job.CreatureCost = AFactoryLiveMobLedger::GetCreatureCost(FName(CreatureTypes[Job.CurrentCreatureIndex()].Name));
         }
         else
         {
@@ -841,7 +868,7 @@ private:
         Job.Expires = FPlatformTime::Seconds() + JobTimeout;
         LastAccepted = Job.Id;
         const TCHAR* Type = TEXT("fireworks");
-        if (!Job.bFireworks) Type = Job.IsNobelisk() ? NobeliskTypes[Job.NobeliskIndex].Name : CreatureNames[Job.CreatureIndex];
+        if (!Job.bFireworks) Type = Job.IsNobelisk() ? NobeliskTypes[Job.NobeliskIndex].Name : CreatureTypes[Job.CreatureIndex].Name;
         UE_LOG(LogFactoryLive, Display, TEXT("Accepted %s (%s, %s, %d)"), *Job.Id, *Effect, Type, Job.Remaining);
         Jobs.Add(MoveTemp(Job));
     }
@@ -877,7 +904,7 @@ private:
     {
         const TSharedRef<FJsonObject> Status = MakeShared<FJsonObject>();
         Status->SetStringField(TEXT("id"), Job.Id);
-        Status->SetStringField(TEXT("creature"), CreatureNames[Job.CreatureIndex]);
+        Status->SetStringField(TEXT("creature"), CreatureTypes[Job.CreatureIndex].Name);
         Status->SetStringField(TEXT("state"), State);
         Status->SetNumberField(TEXT("requested"), Job.Requested);
         Status->SetNumberField(TEXT("spawned"), Job.Requested - Job.Remaining);
@@ -953,7 +980,7 @@ private:
             --Job.Remaining;
             Job.ConsecutiveFailures = 0;
             if (!Job.CreatureVariants.IsEmpty() && Job.Remaining > 0)
-                Job.CreatureCost = AFactoryLiveMobLedger::GetCreatureCost(FName(CreatureNames[Job.CurrentCreatureIndex()]));
+                Job.CreatureCost = AFactoryLiveMobLedger::GetCreatureCost(FName(CreatureTypes[Job.CurrentCreatureIndex()].Name));
         }
         else
         {
@@ -1025,7 +1052,7 @@ private:
         const FVector Adjusted = Hatcher->GetActorLocation();
         if (FVector::DistSquared2D(Adjusted, Floor) > FMath::Square(150.0) ||
             Adjusted.Z < Floor.Z - 30.0 || Adjusted.Z > Floor.Z + 180.0 ||
-            !Ledger.Track(*Hatcher, FName(CreatureNames[HatcherIndex]), Job.Id))
+            !Ledger.Track(*Hatcher, FName(CreatureTypes[Job.CreatureIndex].Name), Job.Id))
         {
             Hatcher->Destroy();
             return false;
@@ -1040,6 +1067,19 @@ private:
         if (!Class) return false;
         if (Job.IsHatcher()) return SpawnHatcher(World, Player, Ledger, Job, Class);
         const FVector Origin = Player.GetActorLocation();
+        const ECreatureKind Kind = CreatureTypes[CreatureIndex].Kind;
+        if (Kind == ECreatureKind::FlyingCrab || Kind == ECreatureKind::Manta)
+        {
+            const bool bManta = Kind == ECreatureKind::Manta;
+            const FVector Heading = PlacementDirection(Job);
+            const FVector At = Origin + Heading * (bManta ? 5500.0 : 950.0) + FVector(0, 0, bManta ? 7000.0 : 180.0);
+            const FTransform Home((-Heading).Rotation(), At);
+            AFGSplinePath* Route = nullptr;
+            AActor* Actor = FactoryLiveFliers::Spawn(World, Class, Home, At, Player, Route);
+            if (!Actor) return false;
+            Ledger.TrackFlier(*Actor, Route, Home, FName(CreatureTypes[CreatureIndex].Name), Job.Id);
+            return true;
+        }
         const double PlayerFloorZ = Origin.Z - Player.GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
         // Try two headings at each distance before moving farther out.
         const bool bTryPreferredPlacement = Job.ConsecutiveFailures % 2 == 0;
@@ -1089,7 +1129,7 @@ private:
         if (!IsValid(Creature)) return false;
         Creature->FinishSpawning(SpawnTransform);
         if (!IsValid(Creature)) return false;
-        if (!Ledger.Track(*Creature, FName(CreatureNames[CreatureIndex]), Job.Id))
+        if (!Ledger.Track(*Creature, FName(CreatureTypes[CreatureIndex].Name), Job.Id))
         {
             const TWeakObjectPtr<AController> SpawnedController = Creature->GetController();
             if (Creature->Destroy())
@@ -1216,7 +1256,7 @@ private:
     TArray<FJob> Jobs;
     TArray<FFallingNobelisk, TInlineAllocator<FactoryLiveFireworks::MaxInFlight>> FallingNobelisks;
     TSharedPtr<FStreamableHandle> AssetLoad;
-    TWeakObjectPtr<UClass> CreatureClasses[UE_ARRAY_COUNT(CreatureClassPaths)];
+    TWeakObjectPtr<UClass> CreatureClasses[UE_ARRAY_COUNT(CreatureTypes)];
     TWeakObjectPtr<UFGAmmoTypeProjectile> NobeliskAmmo[UE_ARRAY_COUNT(NobeliskTypes)];
     const FBoolProperty* ExplodedFlag = nullptr;
     FHttpRequestPtr Request;

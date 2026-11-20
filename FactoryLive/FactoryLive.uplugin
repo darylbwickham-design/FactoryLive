@@ -1,8 +1,8 @@
 {
   "FileVersion": 3,
   "Version": 0,
-  "VersionName": "0.9.0-chaos.6",
-  "SemVersion": "0.9.0-chaos.6",
+  "VersionName": "0.9.0-chaos.8",
+  "SemVersion": "0.9.0-chaos.8",
   "GameVersion": ">=517554 <517555 || >=520140 <520141",
   "FriendlyName": "Factory Live Chaos",
   "Description": "Satisfactory stream effects with a bundled local bridge that arms when the host save is ready.",

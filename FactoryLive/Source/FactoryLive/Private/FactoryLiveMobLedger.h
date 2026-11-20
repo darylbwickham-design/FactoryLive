@@ -9,6 +9,8 @@
 
 class AFGCreature;
 class AFGCrabHatcher;
+class AFGCharacterPlayer;
+class AFGSplinePath;
 
 UENUM()
 enum class EFactoryLiveMobState : uint8
@@ -41,6 +43,18 @@ struct FFactoryLiveMobRecord
     UPROPERTY(SaveGame)
     TObjectPtr<AFGCrabHatcher> Hatcher = nullptr;
 
+    // The vanilla flying crab and manta do not implement FGSaveInterface.
+    UPROPERTY(SaveGame)
+    bool bManagedFlier = false;
+    UPROPERTY(SaveGame)
+    FTransform FlightHome;
+    UPROPERTY(SaveGame)
+    FVector FlightPosition = FVector::ZeroVector;
+    UPROPERTY(Transient)
+    TObjectPtr<AActor> Flier = nullptr;
+    UPROPERTY(Transient)
+    TObjectPtr<AFGSplinePath> FlightRoute = nullptr;
+
     AActor* GetActor() const;
 
 };
@@ -56,6 +70,9 @@ public:
 
     bool Track(AFGCreature& Creature, FName Species, const FString& JobId);
     bool Track(AFGCrabHatcher& Hatcher, FName Species, const FString& JobId);
+    void TrackFlier(AActor& Actor, AFGSplinePath* Route, const FTransform& Home, FName Species, const FString& JobId);
+    FName NextFlierToRestore() const;
+    void RestoreNextFlier(UClass* Class, AFGCharacterPlayer& Player);
     static int32 GetCreatureCost(FName Species);
     int32 GetLivingCost() const { return LivingCost; }
     int32 GetLivingHatchers() const { return LivingHatchers; }
@@ -103,6 +120,7 @@ private:
     };
 
     TMap<TObjectKey<AActor>, int32> Living;
+    TArray<int32> PendingFliers;
     TArray<FCorpse> Corpses;
     int32 LivingCost = 0;
     int32 LivingHatchers = 0;

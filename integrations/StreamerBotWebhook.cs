@@ -9,6 +9,9 @@ public class CPHInline
 {
     // Set this to a preset from bridge.config.json for each action.
     private const string Preset = "chaos-mode";
+    // Set Mob to a name from MOB-ENDPOINTS.md to spawn that creature instead.
+    private const string Mob = "";
+    private const int Quantity = 1;
     private static readonly HttpClient Client = new HttpClient(new HttpClientHandler { UseProxy = false })
     {
         Timeout = TimeSpan.FromSeconds(3)
@@ -25,8 +28,11 @@ public class CPHInline
             var link = JObject.Parse(File.ReadAllText(Path.Combine(directory, "link.json")));
             int port = (int)link["port"];
             string token = (string)link["webhookToken"];
-            var payload = new JObject { ["preset"] = Preset };
-            using (var request = new HttpRequestMessage(HttpMethod.Post, "http://127.0.0.1:" + port + "/v1/trigger"))
+            string route = Mob.Length == 0 ? "/v1/trigger" : "/v1/mobs/" + Uri.EscapeDataString(Mob);
+            var payload = Mob.Length == 0 ? new JObject { ["preset"] = Preset } : new JObject { ["qty"] = Quantity };
+            if (CPH.TryGetArg<string>("redemptionId", out var id) && !string.IsNullOrEmpty(id))
+                payload["eventId"] = id;
+            using (var request = new HttpRequestMessage(HttpMethod.Post, "http://127.0.0.1:" + port + route))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 request.Content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");

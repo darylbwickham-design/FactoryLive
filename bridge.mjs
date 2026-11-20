@@ -22,17 +22,25 @@ const entityVariants = {
   spitter: ['spitter', 'spitter-red', 'spitter-desert', 'spitter-aquatic',
     'alpha-spitter', 'alpha-spitter-red', 'alpha-spitter-desert', 'alpha-spitter-aquatic'],
   stinger: ['stinger', 'big-stinger', 'elite-stinger'],
-  hatcher: [hatcherType],
+  hatcher: [hatcherType, 'elite-hatcher'],
+  crab: ['flying-crab'],
+  wildlife: ['lizard-doggo', 'bean', 'flightless-bird', 'beetle', 'manta'],
   nobelisk: ['standard', 'pulse', 'gas', 'cluster', 'nuke']
 };
-const creatures = new Set([...entityVariants.hog, ...entityVariants.spitter, ...entityVariants.stinger]);
+const hatchers = new Set(entityVariants.hatcher);
+const creatures = new Set([...entityVariants.hog, ...entityVariants.spitter, ...entityVariants.stinger,
+  ...entityVariants.crab, ...entityVariants.wildlife]);
+const mobRoutes = new Map(Object.entries(entityVariants).filter(([id]) => id !== 'nobelisk')
+  .flatMap(([entityId, variants]) => variants.map((name, variant) => [
+    '/v1/mobs/' + name, { name, entityId, variant, hostile: entityId !== 'wildlife', maxQty: maxDirectQuantity(entityId, name) }
+  ])));
 const chaosCreatures = [hatcherType, 'spitter', 'alpha-spitter', 'jetpack-hog'];
 const chaosMixes = {
   spitter: entityVariants.spitter.slice(0, 4),
   'alpha-spitter': entityVariants.spitter.slice(4),
   'jetpack-hog': [...entityVariants.hog, ...entityVariants.stinger]
 };
-const reportedCreatures = new Set([...creatures, hatcherType]);
+const reportedCreatures = new Set([...creatures, ...hatchers]);
 const hatcherIntervalMs = 60_000;
 const maxHatchers = 600;
 const nobeliskTypes = new Set(entityVariants.nobelisk);
@@ -61,6 +69,7 @@ const limits = {
 };
 
 function maxDirectQuantity(entityId, type) {
+  if (type === 'manta') return 1;
   return entityId === 'nobelisk' ? (type === 'nuke' ? 1 : limits.nobelisk.units) : 300;
 }
 
@@ -82,7 +91,7 @@ function validTypes(types, allowed) {
 
 function isDisabledPreset(preset) {
   return preset?.effect === 'teleport' || preset?.effect === 'backpack-shuffle' ||
-    (preset?.effect === 'creatures' && preset.creature === hatcherType);
+    (preset?.effect === 'creatures' && hatchers.has(preset.creature));
 }
 
 function readCreatureJob(value, states) {
@@ -127,6 +136,9 @@ export function validateConfig(config) {
       continue;
     }
     if (p?.effect === 'hatcher-test' || p?.effect === 'chaos-mode') {
+      if (p.effect === 'hatcher-test' && p.creature !== undefined && !hatchers.has(p.creature)) {
+        throw new Error(`Invalid hatcher creature "${name}"`);
+      }
       const maxCount = p.effect === 'chaos-mode'
         ? Math.min(maxHatchers, Math.floor(limits.creatures.units / chaosCreatures.length)) : maxHatchers;
       if (!Number.isInteger(p.count) || p.count < 1 || p.count > maxCount || !Number.isInteger(p.cooldownSeconds) ||
@@ -284,7 +296,7 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
       return [400, { error: 'invalid_qty' }];
     }
     const effect = entityId === 'nobelisk' ? { effect: 'nobelisk', nobelisk: type, cooldownSeconds: 10 }
-      : entityId === 'hatcher' ? { effect: 'hatcher-test', cooldownSeconds: hatcherIntervalMs / 1000 }
+      : entityId === 'hatcher' ? { effect: 'hatcher-test', creature: type, cooldownSeconds: hatcherIntervalMs / 1000 }
       : { effect: 'creatures', creature: type, cooldownSeconds: 10 };
     return triggerEffect(`entity:${entityId}:${variant}`, { ...effect, count: qty }, eventId);
   }
@@ -323,7 +335,7 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
     const isFireworks = p.effect === 'nobelisk-chaos';
     const effect = isHatcher || isChaos ? 'creatures'
       : p.effect === 'cluster' || isNukeWave || isFireworks ? 'nobelisk' : p.effect;
-    const waveCreatures = isChaos ? chaosCreatures : [isHatcher ? hatcherType : p.creature];
+    const waveCreatures = isChaos ? chaosCreatures : [isHatcher ? (p.creature ?? hatcherType) : p.creature];
     if (details.slow && effect !== 'creatures' && !isFireworks) return [429, { error: 'game_throttling' }];
     const type = isFireworks ? fireworksType : isNukeWave ? 'nuke' : p.effect === 'cluster' ? 'cluster' : p.nobelisk;
     const waitMs = p.cooldownSeconds * 1000 - (t - (lastUsed.get(preset) ?? -Infinity));
@@ -347,8 +359,8 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
       if (retryAfterMs > 0) return [429, { error: 'cooldown', retryAfterMs }];
       const { alive, pending, capacity } = details.hatcherTrial;
       if (p.count > capacity) return [409, { error: 'hatcher_wave_unavailable' }];
-      const waiting = queue.reduce((count, job) => count + (job.creature === hatcherType ? job.count : 0),
-        delivery?.creature === hatcherType ? delivery.count : 0);
+      const waiting = queue.reduce((count, job) => count + (hatchers.has(job.creature) ? job.count : 0),
+        hatchers.has(delivery?.creature) ? delivery.count : 0);
       if (alive + pending + waiting + p.count > capacity) {
         return [429, { error: 'hatcher_capacity' }];
       }
@@ -472,7 +484,7 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
     let hatcherTrial;
     if (data.hatcherTrial !== undefined) {
       const { alive, pending: waiting, capacity: hatcherCapacity = 1 } = data.hatcherTrial ?? {};
-      if (!data.creatureTypes?.includes(hatcherType) ||
+      if (!data.creatureTypes?.some(type => hatchers.has(type)) ||
           !Number.isSafeInteger(alive) || alive < 0 || alive > data.active ||
           !Number.isInteger(waiting) || waiting < 0 ||
           !Number.isInteger(hatcherCapacity) || hatcherCapacity < 1 || hatcherCapacity > maxHatchers ||
@@ -482,7 +494,7 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
       }
       hatcherTrial = { alive, pending: waiting, capacity: hatcherCapacity };
     }
-    const creatureTypes = data.creatureTypes?.filter(type => creatures.has(type) || (type === hatcherType && hatcherTrial));
+    const creatureTypes = data.creatureTypes?.filter(type => creatures.has(type) || (hatchers.has(type) && hatcherTrial));
     let drops;
     if (data.nobelisks !== undefined) {
       const { launched, impacted, expired, cancelled, inFlight } = data.nobelisks ?? {};
@@ -566,7 +578,7 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
           (job.nobelisk !== 'nuke' || job.count === 1 || pending?.nuke !== undefined);
         return (creatureTypes ?? legacyCreatures).includes(job.creature) &&
           (!job.variants || (data.mixedCreatures && job.variants.every(variant => creatureTypes?.includes(variant)))) &&
-          (job.creature !== hatcherType || job.count <= hatcherTrial.capacity);
+          (!hatchers.has(job.creature) || job.count <= hatcherTrial.capacity);
       };
       if (delivery && !available(delivery)) delivery = null;
       if (queue.length) queue = queue.filter(available);
@@ -625,7 +637,8 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
       if (req.headers.host !== `127.0.0.1:${config.port}`) return send(421, { error: 'invalid_host' });
       const path = req.url;
       const auth = Buffer.from(req.headers.authorization ?? '');
-      const webhook = path === '/v1/trigger' || path === '/v1/connection' || path === '/v1/presets';
+      const mobAPI = path === '/v1/mobs' || path.startsWith('/v1/mobs/');
+      const webhook = mobAPI || path === '/v1/trigger' || path === '/v1/connection' || path === '/v1/presets';
       const expected = webhook ? webhookAuth : gameAuth;
       if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) {
         return send(401, { error: 'unauthorized' }, true);
@@ -645,6 +658,13 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
           });
         }
         if (req.method === 'GET' && path === '/v1/presets') return send(200, getCatalog(config));
+        if (req.method === 'GET' && path === '/v1/mobs') {
+          expire();
+          const available = details.ready ? (details.creatureTypes ?? legacyCreatures) : [];
+          return send(200, { mobs: Array.from(mobRoutes, ([endpoint, mob]) => ({
+            ...mob, endpoint, available: available.includes(mob.name)
+          })) });
+        }
         if (req.method === 'GET' && path === '/v1/status') return send(200, status());
         if (req.method === 'GET' && path.startsWith('/v1/inventory/result/')) {
           const id = path.slice('/v1/inventory/result/'.length);
@@ -665,11 +685,17 @@ export function createBridge(config, keys, now = () => performance.now(), { auto
           armed = true;
           return send(200, status());
         }
-        if (!['/v1/trigger', '/v1/game', '/v1/inventory'].includes(path)) return send(404, { error: 'unknown_route' });
+        const mob = mobRoutes.get(path);
+        if (!mob && !['/v1/trigger', '/v1/game', '/v1/inventory'].includes(path)) return send(404, { error: 'unknown_route' });
         if (!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')) {
           return send(415, { error: 'expected_json' });
         }
         const data = await readBody(req);
+        if (mob) {
+          if (Object.keys(data).some(key => key !== 'qty' && key !== 'eventId')) return send(400, { error: 'invalid_mob_fields' });
+          return send(...triggerWebhook({ entityId: mob.entityId, variant: mob.variant,
+            qty: Object.hasOwn(data, 'qty') ? data.qty : 1, eventId: data.eventId }));
+        }
         if (path === '/v1/game') {
           expire();
           return send(...sync(data));

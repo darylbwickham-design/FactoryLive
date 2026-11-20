@@ -1,6 +1,8 @@
 #include "FactoryLiveMobLedger.h"
 #include "FactoryLiveBackpack.h"
 #include "FactoryLiveVisibility.h"
+#include "FactoryLiveFliers.h"
+#include "FGSplinePath.h"
 
 #include "Components/MeshComponent.h"
 #include "Creature/FGCreature.h"
@@ -55,6 +57,7 @@ namespace
 AActor* FFactoryLiveMobRecord::GetActor() const
 {
     if (Hatcher) return Hatcher.Get();
+    if (bManagedFlier) return Flier.Get();
     return Actor.Get();
 }
 
@@ -104,6 +107,12 @@ void AFactoryLiveMobLedger::BeginPlay()
         switch (Record.State)
         {
         case EFactoryLiveMobState::Alive:
+            if (Record.bManagedFlier)
+            {
+                PendingFliers.Add(Index);
+                LivingCost += GetCreatureCost(Record.Species);
+                break;
+            }
             if (!IsValid(Actor))
             {
                 FinishRecord(Index, EFactoryLiveMobState::Missing);
@@ -198,6 +207,43 @@ bool AFactoryLiveMobLedger::Track(AFGCrabHatcher& Hatcher, FName Species, const 
     return true;
 }
 
+void AFactoryLiveMobLedger::TrackFlier(AActor& Actor, AFGSplinePath* Route, const FTransform& Home,
+    FName Species, const FString& JobId)
+{
+    const int32 Index = AddRecord(FGuid::NewGuid(), Species, JobId);
+    auto& Record = Records[Index];
+    Record.bManagedFlier = true;
+    Record.FlightHome = Home;
+    Record.FlightPosition = Actor.GetActorLocation();
+    Record.Flier = &Actor;
+    Record.FlightRoute = Route;
+    BindActor(Actor, Index);
+}
+
+FName AFactoryLiveMobLedger::NextFlierToRestore() const
+{
+    return PendingFliers.IsEmpty() ? NAME_None : Records[PendingFliers.Last()].Species;
+}
+
+void AFactoryLiveMobLedger::RestoreNextFlier(UClass* Class, AFGCharacterPlayer& Player)
+{
+    if (PendingFliers.IsEmpty()) return;
+    const int32 Index = PendingFliers.Pop(EAllowShrinking::No);
+    auto& Record = Records[Index];
+    AFGSplinePath* Route = nullptr;
+    Record.Flier = FactoryLiveFliers::Spawn(*GetWorld(), Class, Record.FlightHome, Record.FlightPosition, Player, Route);
+    if (IsValid(Record.Flier))
+    {
+        Record.FlightRoute = Route;
+        BindActor(*Record.Flier, Index);
+    }
+    else
+    {
+        LivingCost -= GetCreatureCost(Record.Species);
+        FinishRecord(Index, EFactoryLiveMobState::Missing);
+    }
+}
+
 int32 AFactoryLiveMobLedger::AddRecord(const FGuid& Id, FName Species, const FString& JobId)
 {
     const int32 Index = Records.AddDefaulted();
@@ -241,6 +287,9 @@ void AFactoryLiveMobLedger::FinishRecord(int32 RecordIndex, EFactoryLiveMobState
     }
     Record.Actor = nullptr;
     Record.Hatcher = nullptr;
+    Record.Flier = nullptr;
+    if (IsValid(Record.FlightRoute)) Record.FlightRoute->Destroy();
+    Record.FlightRoute = nullptr;
     Record.State = State;
     if (State == EFactoryLiveMobState::Killed)
     {
@@ -279,7 +328,8 @@ int32 AFactoryLiveMobLedger::GetCreatureCost(FName Species)
         {FName(TEXT("spitter-desert")), 2}, {FName(TEXT("spitter-aquatic")), 2},
         {FName(TEXT("alpha-spitter")), 4}, {FName(TEXT("alpha-spitter-red")), 4},
         {FName(TEXT("alpha-spitter-desert")), 4}, {FName(TEXT("alpha-spitter-aquatic")), 4},
-        {FName(TEXT("crab-hatcher")), 12}
+        {FName(TEXT("crab-hatcher")), 12}, {FName(TEXT("elite-hatcher")), 12},
+        {FName(TEXT("bean")), 6}, {FName(TEXT("manta")), 24}
     };
     const int32* Cost = Costs.Find(Species);
     return Cost ? *Cost : 1;
@@ -298,7 +348,7 @@ void AFactoryLiveMobLedger::GatherDependencies_Implementation(TArray<UObject*>& 
     for (const auto& Entry : Living)
     {
         AActor* Actor = Records[Entry.Value].GetActor();
-        if (IsValid(Actor) && IFGSaveInterface::Execute_ShouldSave(Actor)) Dependencies.Add(Actor);
+        if (IsValid(Actor) && !Records[Entry.Value].bManagedFlier && IFGSaveInterface::Execute_ShouldSave(Actor)) Dependencies.Add(Actor);
     }
 }
 
@@ -308,6 +358,8 @@ void AFactoryLiveMobLedger::PreSaveGame_Implementation(int32 SaveVersion, int32 
     for (const auto& Entry : Living)
     {
         const AActor* Actor = Records[Entry.Value].GetActor();
+        if (IsValid(Actor) && Records[Entry.Value].bManagedFlier)
+            Records[Entry.Value].FlightPosition = Actor->GetActorLocation();
         if (IsValid(Actor) && IsDead(*Actor)) DeadRecords.Add(Entry.Value);
     }
     for (const int32 Index : DeadRecords) FinishRecord(Index, EFactoryLiveMobState::Killed);

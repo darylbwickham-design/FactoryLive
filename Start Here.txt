@@ -1,19 +1,16 @@
-Factory Live Chaos for Satisfactory
+Factory Live for Satisfactory
 
-1. Use the Steam build 517554 with SML 3.12. Close the game. Extract the Windows
-   mod ZIP into FactoryGame\Mods\FactoryLive in the game installation. Check that
-   FactoryLive.uplugin is directly inside the FactoryLive folder.
-2. Install Node.js 22 or later from nodejs.org. In the Bridge folder, double-click
-   Start Factory Live Bridge.cmd and leave the window open. It starts disarmed.
-3. In Lumia 9.4, open Settings > Plugins > Installed > Install Manually and choose
-   the included Factory Live Chaos .lumiaplugin file. Enable it if prompted.
-4. Load a save as host. Use Arm Bridge on a private Lumia button or a broadcaster-
-   only command. Use Disarm Bridge to pause viewer effects and clear queued work.
-5. Add effects such as Spawn Hog or Drop Nobelisk to rewards. Under Alerts >
-   Factory Live Chaos > Pioneer Death, set up the sound, overlay, or action you want.
+1. In Satisfactory Mod Manager, select your Windows Steam install and profile.
+   Install FactoryLive Stream Integrations and its Satisfactory Mod Loader dependency.
+   Release 0.9.0-chaos.8 targets game builds 517554 and 520140.
+2. Launch the game and load your save as host. The included bridge starts and
+   arms when the world is ready. Close any older standalone bridge first.
+3. In Lumia Stream, install Satisfactory Stream Integration from the Market.
+   Add a Factory Live action to a chat command or channel-point reward.
+   Disarm Bridge pauses viewer effects and clears the queue.
+4. For Streamer.bot, follow MOB-ENDPOINTS.md in this source release. Set Mob to
+   the creature you want and Quantity to the number to spawn. Wildlife has its
+   own named endpoints. Mob Chaos only spawns hostile creatures.
 
-If upgrading an existing setup, keep the same Lumia plugin edition, link file,
-and local bridge config. The bridge reads bridge.local.json when present.
-
-Setup guide and download link to share:
-https://lumi-con.com/factory-live/chaos/
+Setup guides: https://lumi-con.com/factory-live/chaos/
+Mod and updates: https://ficsit.app/mod/FactoryLive

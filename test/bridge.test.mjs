@@ -140,6 +140,82 @@ test('webhook accepts an entity variant and quantity with the same admission and
     { variant: 7, name: 'alpha-spitter-aquatic', maxQty: 300 });
 });
 
+const roster = {
+  hog: ['hog', 'alpha-hog', 'cliff-hog', 'nuclear-hog', 'jetpack-hog'],
+  spitter: ['spitter', 'spitter-red', 'spitter-desert', 'spitter-aquatic', 'alpha-spitter',
+    'alpha-spitter-red', 'alpha-spitter-desert', 'alpha-spitter-aquatic'],
+  stinger: ['stinger', 'big-stinger', 'elite-stinger'],
+  hatcher: ['crab-hatcher', 'elite-hatcher'], crab: ['flying-crab'],
+  wildlife: ['lizard-doggo', 'bean', 'flightless-bird', 'beetle', 'manta']
+};
+const fullWorld = { ...game, mixedCreatures: true, creatureTypes: Object.values(roster).flat(),
+  hatcherTrial: { alive: 0, pending: 0, capacity: 600 } };
+
+test('each advertised mob endpoint queues its exact species and shares numeric-trigger retries', async t => {
+  const { call, advance } = await start(t);
+  const directory = () => call('mobs', undefined, keys.webhookToken, 'GET');
+  assert.equal((await call('mobs', undefined, keys.gameToken, 'GET'))[0], 401);
+  assert.ok((await directory())[1].mobs.every(entry => !entry.available));
+  await call('game', fullWorld);
+  await call('arm');
+  const [, { mobs }] = await directory();
+  assert.deepEqual(mobs.map(entry => entry.name).sort(), [...fullWorld.creatureTypes].sort());
+  for (const entry of mobs) {
+    const { name, entityId, variant, available, hostile, endpoint, maxQty } = entry;
+    assert.equal(roster[entityId][variant], name);
+    assert.equal(available, true);
+    assert.equal(hostile, entityId !== 'wildlife');
+    assert.equal(endpoint, '/v1/mobs/' + name);
+    const qty = maxQty === 1 ? 1 : 3;
+    const eventId = 'endpoint-test-' + name;
+    const [code, receipt] = await call('mobs/' + name, qty === 1 ? { eventId } : { qty, eventId }, keys.webhookToken);
+    assert.equal(code, 202, name);
+    assert.deepEqual(await call('trigger', { entityId, variant, qty, eventId }, keys.webhookToken), [200, { duplicate: true }]);
+    const [, { job }] = await call('game', fullWorld);
+    assert.deepEqual(job, { id: receipt.id, effect: 'creatures', count: qty, creature: name });
+    await call('game', { ...fullWorld, ack: receipt.id });
+    advance(60_001);
+    await call('game', fullWorld);
+    await call('arm');
+  }
+});
+
+test('named mobs enforce auth, availability, quantity, and the shared hatcher reservation', async t => {
+  const { call } = await start(t);
+  const send = (name, body = {}) => call('mobs/' + name, body, keys.webhookToken);
+  assert.equal((await call('mobs/bean', {}))[0], 401);
+  assert.equal((await send('bean'))[0], 409);
+  await call('game', game);
+  await call('arm');
+  assert.deepEqual(await send('bean'), [409, { error: 'creature_unavailable' }]);
+  assert.equal((await send('missing'))[0], 404);
+  assert.equal((await send('bean', { variant: 0 }))[0], 400);
+  assert.equal((await send('bean', { qty: null }))[0], 400);
+  assert.equal((await send('manta', { qty: 2 }))[0], 400);
+  await call('game', fullWorld);
+  assert.equal((await send('elite-hatcher'))[0], 202);
+  assert.equal((await send('crab-hatcher'))[0], 429);
+});
+
+test('Chaos can only deliver hostile mobs even when every wildlife species is available', async t => {
+  const { call, trigger } = await start(t);
+  await call('game', { ...game, creatureTypes: roster.wildlife });
+  await call('arm');
+  assert.deepEqual(trigger('chaos-mode'), [409, { error: 'creature_unavailable' }]);
+  await call('game', fullWorld);
+  const [code, receipt] = trigger('chaos-mode');
+  assert.equal(code, 202);
+  assert.equal(receipt.count, 1200);
+  const hostile = new Set(Object.entries(roster).filter(([key]) => key !== 'wildlife').flatMap(([, names]) => names));
+  let ack;
+  for (const wave of receipt.waves) {
+    const [, { job }] = await call('game', { ...fullWorld, ack });
+    assert.equal(job.id, wave.id);
+    for (const mob of [job.creature, ...(job.variants ?? [])]) assert.ok(hostile.has(mob), mob);
+    ack = job.id;
+  }
+});
+
 test('equipment drop is a single armed viewer action with its own shared cooldown', async t => {
   const options = structuredClone(config);
   options.presets['drop-alias'] = options.presets['equipment-drop'];
